@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Развитие школы Kodama</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>План развития школы Kodama</h1>
+        <div class="header-buttons">
+            <button onclick="exportStructure()">Экспорт</button>
+            <input type="file" id="importFile" style="display: none" onchange="importStructure(event)">
+            <button onclick="document.getElementById('importFile').click()">Импорт</button>
+            <button onclick="showClearConfirmation()" class="clear-btn">Очистить всё</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="tree-container">
+            <div class="node root-node" id="root">
+                <div class="node-content">
+                    <h2>Kodama</h2>
+                    <button class="add-btn" onclick="showAddNodeModal('root')">+</button>
+                </div>
+            </div>
+            <div class="level" data-level="1">
+                <!-- Узлы будут добавляться сюда -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно для добавления узла -->
+    <div class="modal" id="nodeModal">
+        <div class="modal-content">
+            <h2>Добавить направление</h2>
+            <input type="text" id="nodeName" placeholder="Название направления">
+            <div class="modal-buttons">
+                <button onclick="addNode()">Добавить</button>
+                <button onclick="closeModal('nodeModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для задач -->
+    <div class="modal" id="tasksModal">
+        <div class="modal-content">
+            <h2>Задачи</h2>
+            <div id="tasksList"></div>
+            <input type="text" id="newTask" placeholder="Новая задача">
+            <div class="modal-buttons">
+                <button onclick="addTask()">Добавить задачу</button>
+                <button onclick="closeModal('tasksModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Добавляем модальное окно подтверждения очистки -->
+    <div class="modal" id="clearModal">
+        <div class="modal-content">
+            <h2>Подтверждение очистки</h2>
+            <p>Вы уверены, что хотите удалить все узлы и задачи?</p>
+            <div class="modal-buttons">
+                <button onclick="clearAllData()" class="danger-btn">Да, очистить</button>
+                <button onclick="closeModal('clearModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Добавляем модальное окно редактирования -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h2>Редактировать узел</h2>
+            <input type="text" id="editNodeName" placeholder="Новое название">
+            <div class="modal-buttons">
+                <button onclick="editNode()">Сохранить</button>
+                <button onclick="closeModal('editModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Добавляем модальное окно подтверждения удаления -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h2>Подтверждение удаления</h2>
+            <p>Вы уверены, что хотите удалить этот узел и все его дочерние элементы?</p>
+            <div class="modal-buttons">
+                <button onclick="deleteNode()" class="danger-btn">Да, удалить</button>
+                <button onclick="closeModal('deleteModal')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

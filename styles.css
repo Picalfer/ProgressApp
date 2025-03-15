@@ -1,0 +1,317 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #f4f1e9;
+    color: #2c1810;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #2c1810;
+    color: #f4f1e9;
+    padding: 1rem;
+    text-align: center;
+    border-bottom: 2px solid #8b4513;
+}
+
+.tree-container {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    position: relative;
+}
+
+.level {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    width: 100%;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.node {
+    background: #fff9e6;
+    border: 2px solid #8b4513;
+    padding: 1rem;
+    min-width: 250px;
+    position: relative;
+    z-index: 1;
+}
+
+.node-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.root-node {
+    background: #2c1810;
+    color: #f4f1e9;
+}
+
+.buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-btn, .task-btn, .delete-btn {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #8b4513;
+    background: #f4f1e9;
+    color: #2c1810;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.root-node .add-btn {
+    border-color: #f4f1e9;
+    background: #8b4513;
+    color: #f4f1e9;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(44, 24, 16, 0.8);
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff9e6;
+    border: 2px solid #8b4513;
+    padding: 2rem;
+    width: 90%;
+    max-width: 500px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+}
+
+.modal input {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 1rem 0;
+    border: 2px solid #8b4513;
+    background: #f4f1e9;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.modal-buttons button {
+    padding: 0.5rem 1rem;
+    border: 2px solid #8b4513;
+    background: #f4f1e9;
+    color: #2c1810;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    margin-left: 1rem;
+}
+
+.tasks-list {
+    margin: 1rem 0;
+    border: 2px solid #8b4513;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 2px solid #8b4513;
+    background: #f4f1e9;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-grow: 1;
+}
+
+.task-checkbox {
+    position: relative;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.task-checkbox input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #8b4513;
+    background: #f4f1e9;
+}
+
+.task-checkbox input:checked + .checkmark:after {
+    content: '✓';
+    position: absolute;
+    left: 2px;
+    top: -2px;
+    color: #8b4513;
+}
+
+.task-text {
+    flex-grow: 1;
+}
+
+.task-text.completed {
+    text-decoration: line-through;
+    color: #8b4513;
+    opacity: 0.7;
+}
+
+.delete-task-btn {
+    background: none;
+    border: none;
+    color: #8b4513;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.2rem 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.delete-task-btn:hover {
+    opacity: 1;
+}
+
+.connection-line {
+    position: absolute;
+    background-color: #8b4513;
+    pointer-events: none;
+    transform-origin: 0 0;
+    opacity: 0;
+    animation: lineAppear 0.3s ease forwards;
+    z-index: 0;
+}
+
+@keyframes lineAppear {
+    from {
+        opacity: 0;
+        transform: scaleX(0) rotate(var(--angle));
+    }
+    to {
+        opacity: 1;
+        transform: scaleX(1) rotate(var(--angle));
+    }
+}
+
+.header-buttons {
+    margin-top: 1rem;
+}
+
+.header-buttons button {
+    padding: 0.5rem 1rem;
+    margin: 0 0.5rem;
+    border: 2px solid #f4f1e9;
+    background: transparent;
+    color: #f4f1e9;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.toggle-btn {
+    font-size: 0.8rem;
+    transition: transform 0.3s;
+}
+
+.node.collapsed .toggle-btn {
+    transform: rotate(-90deg);
+}
+
+/* Добавляем стили для кнопки очистки и кнопки подтверждения */
+.clear-btn {
+    background: #8b4513 !important;
+}
+
+.danger-btn {
+    background: #8b4513 !important;
+    color: #f4f1e9 !important;
+}
+
+.modal p {
+    margin: 1rem 0;
+    text-align: center;
+}
+
+/* Добавляем стили для новых кнопок */
+.edit-btn {
+    background: #f4f1e9;
+    color: #2c1810;
+}
+
+.delete-btn {
+    background: #8b4513;
+    color: #f4f1e9;
+}
+
+/* Добавляем стиль для редактируемого заголовка */
+.node h3 {
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 4px;
+}
+
+.node h3:hover {
+    background: rgba(139, 69, 19, 0.1);
+}
+
+/* Добавляем стиль для отображения имени родителя */
+.node::before {
+    content: attr(data-parent-title);
+    position: absolute;
+    top: -20px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #8b4513;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Корневой узел не должен показывать родителя */
+.root-node::before {
+    display: none;
+}
+
+.node.collapsed {
+    display: none; /* Скрываем узлы с классом collapsed */
+}
