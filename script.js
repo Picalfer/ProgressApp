@@ -100,6 +100,11 @@ function createNode(id, title) {
     // Добавляем стили для заголовка, чтобы было понятно, что это кликабельный элемент
     titleEl.style.cursor = 'pointer';
     
+    // Элемент для отображения количества задач
+    const taskCountEl = document.createElement('span');
+    taskCountEl.className = 'task-count';
+    taskCountEl.textContent = `Задач: ${data.nodes[id].tasks.length}`; // Изначально количество задач
+    
     const buttons = document.createElement('div');
     buttons.className = 'buttons';
     
@@ -123,8 +128,31 @@ function createNode(id, title) {
     buttons.appendChild(deleteBtn);
     buttons.appendChild(taskBtn);
     content.appendChild(titleEl);
+    content.appendChild(taskCountEl); // Добавляем элемент для отображения количества задач
     content.appendChild(buttons);
     node.appendChild(content);
+    
+    // Если у узла есть родитель, добавляем его в родительский узел
+    if (parentId) {
+        const parentNode = document.getElementById(parentId);
+        
+        // Проверяем, есть ли контейнер для дочерних узлов
+        let childrenContainer = parentNode.querySelector('.children-container');
+        if (!childrenContainer) {
+            // Создаем контейнер для дочерних узлов
+            childrenContainer = document.createElement('div');
+            childrenContainer.className = 'children-container';
+            childrenContainer.style.display = 'flex'; // Используем flexbox для расположения дочерних узлов
+            childrenContainer.style.justifyContent = 'center'; // Центрируем контейнер
+            childrenContainer.style.flexDirection = 'row'; // Располагаем дочерние узлы в ряд
+            parentNode.appendChild(childrenContainer);
+        }
+        
+        // Добавляем дочерний узел в контейнер
+        childrenContainer.appendChild(node);
+    }
+    
+    updateTaskCount(id); // Инициализируем количество задач
     
     return node;
 }
@@ -213,6 +241,9 @@ function addTask() {
         
         data.nodes[nodeId].tasks.push(task);
         document.getElementById('newTask').value = '';
+        
+        // Обновляем количество задач
+        updateTaskCount(nodeId);
         
         localStorage.setItem('treeData', JSON.stringify(data));
         showTasksModal(nodeId);
@@ -533,6 +564,28 @@ function toggleTask(nodeId, taskId) {
 // Добавляем функцию удаления задачи
 function deleteTask(nodeId, taskId) {
     data.nodes[nodeId].tasks = data.nodes[nodeId].tasks.filter(t => t.id !== taskId);
+    
+    // Обновляем количество задач
+    updateTaskCount(nodeId);
+    
     localStorage.setItem('treeData', JSON.stringify(data));
     showTasksModal(nodeId);
+}
+
+function updateTaskCount(nodeId) {
+    const taskCountEl = document.querySelector(`#${nodeId} .task-count`);
+    const tasks = data.nodes[nodeId].tasks;
+    
+    // Считаем количество невыполненных задач
+    const incompleteTasksCount = tasks.filter(task => !task.completed).length;
+    
+    // Обновляем текст элемента
+    taskCountEl.textContent = `Задач: ${incompleteTasksCount}`;
+    
+    // Показываем или скрываем элемент в зависимости от количества задач
+    if (incompleteTasksCount > 0) {
+        taskCountEl.style.display = 'inline'; // Показываем элемент
+    } else {
+        taskCountEl.style.display = 'none'; // Скрываем элемент
+    }
 }

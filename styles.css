@@ -315,3 +315,17 @@ header {
 .node.collapsed {
     display: none; /* Скрываем узлы с классом collapsed */
 }
+
+.children-container {
+    display: flex; /* Используем flexbox для расположения дочерних узлов */
+    justify-content: center; /* Центрируем контейнер */
+    flex-direction: row; /* Располагаем дочерние узлы в ряд */
+    gap: 1rem; /* Отступы между дочерними узлами */
+    width: 100%; /* Занимаем всю ширину родительского узла */
+}
+
+.task-count {
+    font-size: 0.9rem; /* Размер шрифта для количества задач */
+    color: #8b4513; /* Цвет текста */
+    margin-left: 1rem; /* Отступ слева */
+}
