@@ -94,11 +94,64 @@ function createNode(id, title) {
     
     const titleEl = document.createElement('h3');
     titleEl.textContent = title;
-    titleEl.ondblclick = () => showEditModal(id, title); // Редактирование по двойному клику
-    titleEl.onclick = () => showTasksModal(id); // Показ задач по одиночному клику
+    titleEl.dataset.originalText = title; // Сохраняем оригинальный текст
     
-    // Добавляем стили для заголовка, чтобы было понятно, что это кликабельный элемент
-    titleEl.style.cursor = 'pointer';
+    // Заменяем обработчик двойного клика на одинарный клик
+    titleEl.addEventListener('click', (event) => {
+        event.stopPropagation(); // Предотвращаем всплытие события
+        
+        // Проверяем, не редактируется ли уже заголовок
+        if (titleEl.getAttribute('contenteditable') === 'true') {
+            return;
+        }
+        
+        // Делаем текст редактируемым
+        titleEl.setAttribute('contenteditable', 'true');
+        titleEl.classList.add('editing');
+        titleEl.focus();
+        
+        // Устанавливаем выделение на всем тексте
+        const range = document.createRange();
+        range.selectNodeContents(titleEl);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Обработчик клавиши Enter
+        const handleKeyDown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                titleEl.blur(); // Завершаем редактирование
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                titleEl.textContent = titleEl.dataset.originalText; // Восстанавливаем исходный текст
+                titleEl.blur(); // Завершаем редактирование
+            }
+        };
+        
+        // Обработчик потери фокуса
+        const handleBlur = () => {
+            titleEl.removeAttribute('contenteditable');
+            titleEl.classList.remove('editing');
+            
+            // Проверяем, изменился ли текст
+            const newText = titleEl.textContent.trim();
+            if (newText && newText !== titleEl.dataset.originalText) {
+                editNode(id, newText);
+                titleEl.dataset.originalText = newText;
+            } else {
+                titleEl.textContent = titleEl.dataset.originalText; // Восстанавливаем текст, если он пустой
+            }
+            
+            // Удаляем обработчики
+            titleEl.removeEventListener('keydown', handleKeyDown);
+            titleEl.removeEventListener('blur', handleBlur);
+        };
+        
+        // Добавляем обработчики
+        titleEl.addEventListener('keydown', handleKeyDown);
+        titleEl.addEventListener('blur', handleBlur);
+    });
     
     // Элемент для отображения количества задач
     const taskCountEl = document.createElement('span');
@@ -116,12 +169,16 @@ function createNode(id, title) {
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = '×';
-    deleteBtn.onclick = () => showDeleteConfirmation(id);
+    deleteBtn.onclick = () => confirmDeleteNode(id);
     
+    // Обновляем обработчик кнопки задач 
     const taskBtn = document.createElement('button');
     taskBtn.className = 'task-btn';
     taskBtn.textContent = '✓';
-    taskBtn.onclick = () => showTasksModal(id);
+    taskBtn.onclick = (event) => {
+        event.stopPropagation();
+        showTasksModal(id);
+    };
     
     // Добавляем кнопки в контейнер
     buttons.appendChild(addBtn);
@@ -157,97 +214,356 @@ function createNode(id, title) {
     return node;
 }
 
-// Показать модальное окно для добавления узла
+// Функция для показа модального окна добавления узла
 function showAddNodeModal(parentId) {
-    const modal = document.getElementById('nodeModal');
-    modal.style.display = 'block';
-    modal.dataset.parentId = parentId;
-    document.getElementById('nodeName').focus();
+    showModal({
+        id: 'nodeModal',
+        title: 'Добавить направление',
+        fields: [
+            {
+                id: 'nodeName',
+                type: 'text',
+                placeholder: 'Название направления'
+            }
+        ],
+        buttons: [
+            {
+                text: 'Добавить',
+                action: (fields) => {
+                    const nodeName = fields.nodeName.value.trim();
+                    if (nodeName) {
+                        addNode(parentId, nodeName);
+                    }
+                }
+            },
+            {
+                text: 'Отмена',
+                action: 'close'
+            }
+        ]
+    });
 }
 
-// Показать модальное окно с задачами
+// Функция добавления узла (обновленная)
+function addNode(parentId, nodeName) {
+    const newId = `node${data.nextId++}`;
+    data.nodes[newId] = {
+        title: nodeName,
+        tasks: [],
+        parentId: parentId
+    };
+    
+    const parentNode = document.getElementById(parentId);
+    const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
+    const newNode = createNode(newId, nodeName);
+    nextLevel.appendChild(newNode);
+    
+    localStorage.setItem('treeData', JSON.stringify(data));
+    closeModal('nodeModal');
+
+    requestAnimationFrame(() => {
+        setTimeout(updateAllLines, 50);
+    });
+}
+
+// Функция для показа модального окна с задачами
 function showTasksModal(nodeId) {
-    const modal = document.getElementById('tasksModal');
-    modal.style.display = 'block';
-    modal.dataset.nodeId = nodeId;
+    const node = getNodeById(nodeId);
+    if (!node) return;
     
-    const tasksList = document.getElementById('tasksList');
-    const tasks = data.nodes[nodeId].tasks;
+    const tasks = node.tasks || [];
     
-    tasksList.innerHTML = tasks.map(task => `
-        <div class="task-item" data-task-id="${task.id}">
-            <div class="task-content">
-                <label class="task-checkbox">
-                    <input type="checkbox" 
-                           ${task.completed ? 'checked' : ''} 
-                           onchange="toggleTask('${nodeId}', ${task.id})">
-                    <span class="checkmark"></span>
-                </label>
-                <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
-            </div>
-            <button class="delete-task-btn" onclick="deleteTask('${nodeId}', ${task.id})">🗑</button>
-        </div>
-    `).join('');
-    
-    document.getElementById('newTask').focus();
-}
-
-// Закрыть модальное окно
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-// Добавить новый узел
-function addNode() {
-    const modal = document.getElementById('nodeModal');
-    const title = document.getElementById('nodeName').value.trim();
-    const parentId = modal.dataset.parentId;
-    
-    if (title) {
-        const newId = `node${data.nextId++}`;
-        data.nodes[newId] = {
-            title: title,
-            tasks: [],
-            parentId: parentId
-        };
-        
-        const parentNode = document.getElementById(parentId);
-        const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
-        const newNode = createNode(newId, title);
-        nextLevel.appendChild(newNode);
-        
-        localStorage.setItem('treeData', JSON.stringify(data));
-        closeModal('nodeModal');
-        document.getElementById('nodeName').value = '';
-
-        requestAnimationFrame(() => {
-            setTimeout(updateAllLines, 50);
+    let tasksHtml = '';
+    if (tasks.length > 0) {
+        tasksHtml = '<div class="tasks-list">';
+        tasks.forEach((task) => {
+            tasksHtml += `
+                <div class="task-item">
+                    <div class="task-content">
+                        <label class="task-checkbox">
+                            <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} 
+                                   onchange="toggleTask('${nodeId}', ${task.id})">
+                            <span class="checkmark"></span>
+                        </label>
+                        <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
+                    </div>
+                    <button class="delete-task-btn" onclick="deleteTask('${nodeId}', ${task.id})">✕</button>
+                </div>
+            `;
         });
+        tasksHtml += '</div>';
+    } else {
+        tasksHtml = '<p class="no-tasks">Нет задач</p>';
+    }
+    
+    showModal({
+        id: 'tasksModal',
+        title: `Задачи: ${node.title}`,
+        content: tasksHtml,
+        fields: [
+            {
+                id: 'newTask',
+                type: 'text',
+                placeholder: 'Новая задача'
+            }
+        ],
+        buttons: [
+            {
+                text: 'Добавить задачу',
+                action: (fields) => {
+                    const taskText = fields.newTask.value.trim();
+                    if (taskText) {
+                        addTask(nodeId, taskText);
+                        fields.newTask.value = ''; // Очистка поля
+                        // Обновляем модальное окно с задачами
+                        showTasksModal(nodeId);
+                    }
+                }
+            },
+            {
+                text: 'Закрыть',
+                action: 'close'
+            }
+        ]
+    });
+}
+
+// Функция для подтверждения очистки всех данных
+function confirmClearAll() {
+    showModal({
+        id: 'clearModal',
+        title: 'Подтверждение очистки',
+        content: 'Вы уверены, что хотите удалить все узлы и задачи?',
+        buttons: [
+            {
+                text: 'Да, очистить',
+                class: 'danger-btn',
+                action: () => {
+                    clearAllData();
+                    closeModal('clearModal');
+                }
+            },
+            {
+                text: 'Отмена',
+                action: 'close'
+            }
+        ]
+    });
+}
+
+// Функция для показа модального окна редактирования узла
+function showEditNodeModal(nodeId) {
+    const node = getNodeById(nodeId); // Предполагаем, что эта функция уже существует
+    
+    showModal({
+        id: 'editModal',
+        title: 'Редактировать узел',
+        fields: [
+            {
+                id: 'editNodeName',
+                type: 'text',
+                placeholder: 'Новое название',
+                value: node.title
+            }
+        ],
+        buttons: [
+            {
+                text: 'Сохранить',
+                action: (fields) => {
+                    const newName = fields.editNodeName.value.trim();
+                    if (newName) {
+                        editNode(nodeId, newName);
+                        closeModal('editModal');
+                    }
+                }
+            },
+            {
+                text: 'Отмена',
+                action: 'close'
+            }
+        ]
+    });
+}
+
+// Функция для подтверждения удаления узла
+function confirmDeleteNode(nodeId) {
+    showModal({
+        id: 'deleteModal',
+        title: 'Подтверждение удаления',
+        content: 'Вы уверены, что хотите удалить этот узел и все его дочерние элементы?',
+        buttons: [
+            {
+                text: 'Да, удалить',
+                class: 'danger-btn',
+                action: () => {
+                    deleteNode(nodeId);
+                    closeModal('deleteModal');
+                }
+            },
+            {
+                text: 'Отмена',
+                action: 'close'
+            }
+        ]
+    });
+}
+
+// Функция для создания и показа модального окна
+function showModal(options) {
+    // Параметры по умолчанию
+    const defaults = {
+        title: 'Модальное окно', 
+        content: '', 
+        fields: [],
+        buttons: [
+            { text: 'Закрыть', action: 'close', class: '' }
+        ],
+        onOpen: null,
+        id: 'dynamicModal_' + Date.now()
+    };
+    
+    // Объединение параметров по умолчанию с переданными параметрами
+    const settings = {...defaults, ...options};
+    
+    // Удаляем предыдущее модальное окно с таким же ID, если оно существует
+    const existingModal = document.getElementById(settings.id);
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Создаем модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = settings.id;
+    
+    // Создаем содержимое модального окна
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    // Добавляем заголовок
+    const title = document.createElement('h2');
+    title.textContent = settings.title;
+    modalContent.appendChild(title);
+    
+    // Добавляем основное содержимое, если оно есть
+    if (settings.content) {
+        const contentElement = document.createElement('p');
+        contentElement.innerHTML = settings.content;
+        modalContent.appendChild(contentElement);
+    }
+    
+    // Добавляем поля ввода, если они указаны
+    const inputFields = {};
+    if (settings.fields && settings.fields.length > 0) {
+        settings.fields.forEach(field => {
+            if (field.type === 'text' || field.type === 'password' || field.type === 'number') {
+                const input = document.createElement('input');
+                input.type = field.type;
+                input.placeholder = field.placeholder || '';
+                input.value = field.value || '';
+                input.id = field.id;
+                
+                if (field.label) {
+                    const label = document.createElement('label');
+                    label.textContent = field.label;
+                    label.setAttribute('for', field.id);
+                    modalContent.appendChild(label);
+                }
+                
+                modalContent.appendChild(input);
+                inputFields[field.id] = input;
+            } else if (field.type === 'textarea') {
+                const textarea = document.createElement('textarea');
+                textarea.placeholder = field.placeholder || '';
+                textarea.value = field.value || '';
+                textarea.id = field.id;
+                
+                if (field.label) {
+                    const label = document.createElement('label');
+                    label.textContent = field.label;
+                    label.setAttribute('for', field.id);
+                    modalContent.appendChild(label);
+                }
+                
+                modalContent.appendChild(textarea);
+                inputFields[field.id] = textarea;
+            } else if (field.type === 'custom') {
+                const div = document.createElement('div');
+                div.id = field.id;
+                div.innerHTML = field.html || '';
+                modalContent.appendChild(div);
+                inputFields[field.id] = div;
+            }
+        });
+    }
+    
+    // Добавляем кнопки
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'modal-buttons';
+    
+    settings.buttons.forEach(button => {
+        const btn = document.createElement('button');
+        btn.textContent = button.text;
+        
+        if (button.class) {
+            btn.className = button.class;
+        }
+        
+        if (button.action === 'close') {
+            btn.onclick = () => closeModal(settings.id);
+        } else if (typeof button.action === 'function') {
+            btn.onclick = () => {
+                button.action(inputFields, settings.id);
+            };
+        }
+        
+        buttonsContainer.appendChild(btn);
+    });
+    
+    modalContent.appendChild(buttonsContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+    
+    // Вызываем callback после открытия, если он указан
+    if (typeof settings.onOpen === 'function') {
+        settings.onOpen(inputFields, settings.id);
+    }
+    
+    return {
+        modal: modal,
+        fields: inputFields,
+        close: () => closeModal(settings.id)
+    };
+}
+
+// Функция для закрытия модального окна
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        // Необязательно удалять модальное окно, но можно и так:
+        // modal.remove();
     }
 }
 
 // Добавить задачу
-function addTask() {
-    const modal = document.getElementById('tasksModal');
-    const nodeId = modal.dataset.nodeId;
-    const taskText = document.getElementById('newTask').value.trim();
+function addTask(nodeId, taskText) {
+    const task = {
+        id: data.taskId++,
+        text: taskText,
+        completed: false
+    };
     
-    if (taskText) {
-        const task = {
-            id: data.taskId++,
-            text: taskText,
-            completed: false
-        };
-        
-        data.nodes[nodeId].tasks.push(task);
-        document.getElementById('newTask').value = '';
-        
-        // Обновляем количество задач
-        updateTaskCount(nodeId);
-        
-        localStorage.setItem('treeData', JSON.stringify(data));
-        showTasksModal(nodeId);
-    }
+    data.nodes[nodeId].tasks.push(task);
+    
+    // Обновляем количество задач
+    updateTaskCount(nodeId);
+    
+    localStorage.setItem('treeData', JSON.stringify(data));
+    showTasksModal(nodeId);
 }
 
 // Получить уровень узла
@@ -354,6 +670,25 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Добавляем стили для редактируемого текста
+const editStyle = document.createElement('style');
+editStyle.textContent = `
+    .node h3.editing {
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 2px 4px;
+        outline: none;
+        min-width: 50px;
+    }
+    
+    .node h3 {
+        cursor: text;
+        padding: 2px 4px;
+    }
+`;
+document.head.appendChild(editStyle);
+
 // Добавляем функции экспорта/импорта
 function exportStructure() {
     const dataStr = JSON.stringify(data, null, 2);
@@ -445,87 +780,24 @@ function importStructure(event) {
     event.target.value = '';
 }
 
-// Добавляем функцию показа модального окна подтверждения
-function showClearConfirmation() {
-    document.getElementById('clearModal').style.display = 'block';
-}
-
-// Добавляем функцию очистки всех данных
-function clearAllData() {
-    // Очищаем данные
-    data.nodes = {
-        'root': {
-            title: 'Kodama',
-            tasks: [],
-            parentId: null
-        }
-    };
-    data.nextId = 1;
-
-    // Очищаем DOM
-    document.querySelectorAll('.level').forEach(level => {
-        if (level.dataset.level !== '1') {
-            level.remove();
-        } else {
-            level.innerHTML = '';
+// Обновляем функцию редактирования узла
+function editNode(nodeId, newTitle) {
+    data.nodes[nodeId].title = newTitle;
+    
+    // Обновляем отображение имени родителя у дочерних узлов
+    Object.entries(data.nodes).forEach(([id, node]) => {
+        if (node.parentId === nodeId) {
+            const childNode = document.getElementById(id);
+            if (childNode) {
+                childNode.dataset.parentTitle = newTitle;
+            }
         }
     });
-
-    // Очищаем линии
-    document.querySelectorAll('.connection-line').forEach(line => line.remove());
-
-    // Очищаем localStorage
+    
     localStorage.setItem('treeData', JSON.stringify(data));
-
-    // Закрываем модальное окно
-    closeModal('clearModal');
 }
 
-// Добавляем функции для редактирования и удаления
-function showEditModal(id, currentTitle) {
-    const modal = document.getElementById('editModal');
-    const input = document.getElementById('editNodeName');
-    input.value = currentTitle;
-    modal.dataset.nodeId = id;
-    modal.style.display = 'block';
-    input.focus();
-    input.select();
-}
-
-function editNode() {
-    const modal = document.getElementById('editModal');
-    const nodeId = modal.dataset.nodeId;
-    const newTitle = document.getElementById('editNodeName').value.trim();
-    
-    if (newTitle) {
-        data.nodes[nodeId].title = newTitle;
-        document.querySelector(`#${nodeId} h3`).textContent = newTitle;
-        
-        // Обновляем отображение имени родителя у дочерних узлов
-        Object.entries(data.nodes).forEach(([id, node]) => {
-            if (node.parentId === nodeId) {
-                const childNode = document.getElementById(id);
-                if (childNode) {
-                    childNode.dataset.parentTitle = newTitle;
-                }
-            }
-        });
-        
-        localStorage.setItem('treeData', JSON.stringify(data));
-        closeModal('editModal');
-    }
-}
-
-function showDeleteConfirmation(nodeId) {
-    const modal = document.getElementById('deleteModal');
-    modal.dataset.nodeId = nodeId;
-    modal.style.display = 'block';
-}
-
-function deleteNode() {
-    const modal = document.getElementById('deleteModal');
-    const nodeId = modal.dataset.nodeId;
-    
+function deleteNode(nodeId) {
     // Рекурсивно находим и удаляем все дочерние узлы
     function deleteChildren(parentId) {
         Object.entries(data.nodes).forEach(([id, node]) => {
@@ -550,20 +822,38 @@ function deleteNode() {
     closeModal('deleteModal');
 }
 
-// Добавляем функцию переключения статуса задачи
+// Обновляем функцию переключения статуса задачи
 function toggleTask(nodeId, taskId) {
-    const task = data.nodes[nodeId].tasks.find(t => t.id === taskId);
+    const node = getNodeById(nodeId);
+    if (!node) return;
+    
+    const task = node.tasks.find(t => t.id === Number(taskId));
     if (task) {
         task.completed = !task.completed;
-        const taskText = document.querySelector(`.task-item[data-task-id="${taskId}"] .task-text`);
-        taskText.classList.toggle('completed');
+        
+        // Обновляем визуальное отображение
+        const taskText = document.querySelector(`#tasksModal .task-item input[id="task_${taskId}"]`)
+            .closest('.task-item').querySelector('.task-text');
+        
+        if (taskText) {
+            if (task.completed) {
+                taskText.classList.add('completed');
+            } else {
+                taskText.classList.remove('completed');
+            }
+        }
+        
+        updateTaskCount(nodeId);
         localStorage.setItem('treeData', JSON.stringify(data));
     }
 }
 
-// Добавляем функцию удаления задачи
+// Обновляем функцию удаления задачи
 function deleteTask(nodeId, taskId) {
-    data.nodes[nodeId].tasks = data.nodes[nodeId].tasks.filter(t => t.id !== taskId);
+    const node = getNodeById(nodeId);
+    if (!node) return;
+    
+    node.tasks = node.tasks.filter(t => t.id !== taskId);
     
     // Обновляем количество задач
     updateTaskCount(nodeId);
@@ -588,4 +878,138 @@ function updateTaskCount(nodeId) {
     } else {
         taskCountEl.style.display = 'none'; // Скрываем элемент
     }
+}
+
+// Добавляем функцию для получения данных узла по ID
+function getNodeById(nodeId) {
+    return data.nodes[nodeId] || null;
+}
+
+// Функция для очистки всех данных
+function clearAllData() {
+    // Сбрасываем структуру данных
+    data.nodes = {
+        'root': {
+            title: 'Kodama',
+            tasks: [],
+            parentId: null
+        }
+    };
+    data.nextId = 1;
+    data.taskId = 1;
+    
+    // Очищаем DOM от всех узлов, кроме корневого
+    document.querySelectorAll('.node:not(#root)').forEach(node => node.remove());
+    
+    // Очищаем все уровни, кроме первого
+    document.querySelectorAll('.level:not([data-level="1"])').forEach(level => level.remove());
+    
+    // Очищаем первый уровень
+    const firstLevel = document.querySelector('.level[data-level="1"]');
+    if (firstLevel) {
+        firstLevel.innerHTML = '';
+    }
+    
+    // Удаляем все линии соединений
+    document.querySelectorAll('.connection-line').forEach(line => line.remove());
+    
+    // Обновляем заголовок корневого узла (на всякий случай)
+    const rootTitle = document.querySelector('#root h2');
+    if (rootTitle) {
+        rootTitle.textContent = 'Kodama';
+    }
+    
+    // Сохраняем пустую структуру в localStorage
+    localStorage.setItem('treeData', JSON.stringify(data));
+}
+
+// Функция для генерации тестовых узлов
+function generateTestNodes() {
+    // Создаем тестовые узлы
+    const testStructure = [
+        { 
+            title: "Образование", 
+            tasks: ["Разработать новые курсы", "Нанять преподавателей", "Обновить учебные материалы"],
+            children: [
+                { 
+                    title: "Онлайн-курсы",
+                    tasks: ["Записать видеоуроки", "Создать тесты"],
+                    children: []
+                },
+                {
+                    title: "Очные классы",
+                    tasks: ["Подготовить помещения", "Составить расписание", "Заказать оборудование"],
+                    children: []
+                }
+            ]
+        },
+        {
+            title: "Маркетинг",
+            tasks: ["Разработать стратегию", "Запустить рекламу", "Собрать аналитику"],
+            children: [
+                {
+                    title: "Социальные сети",
+                    tasks: ["Запустить кампанию в Instagram", "Создать контент-план"],
+                    children: []
+                }
+            ]
+        },
+        {
+            title: "Финансы",
+            tasks: ["Составить бюджет", "Найти инвесторов"],
+            children: []
+        }
+    ];
+    
+    // Очищаем перед созданием, чтобы избежать дублирования
+    clearAllData();
+    
+    // Рекурсивная функция для создания узлов и задач
+    function createTestNode(parentId, nodeData) {
+        const newId = `node${data.nextId++}`;
+        data.nodes[newId] = {
+            title: nodeData.title,
+            tasks: [],
+            parentId: parentId
+        };
+        
+        // Добавляем задачи к узлу
+        if (nodeData.tasks && nodeData.tasks.length > 0) {
+            nodeData.tasks.forEach(taskText => {
+                const task = {
+                    id: data.taskId++,
+                    text: taskText,
+                    completed: Math.random() > 0.7 // Случайно отмечаем задачу как выполненную
+                };
+                data.nodes[newId].tasks.push(task);
+            });
+        }
+        
+        // Добавляем узел в DOM
+        const parentNode = document.getElementById(parentId);
+        const level = getOrCreateLevel(getNodeLevel(parentId) + 1);
+        const newNode = createNode(newId, nodeData.title);
+        level.appendChild(newNode);
+        
+        // Рекурсивно создаем дочерние узлы
+        if (nodeData.children && nodeData.children.length > 0) {
+            nodeData.children.forEach(childData => {
+                createTestNode(newId, childData);
+            });
+        }
+        
+        return newId;
+    }
+    
+    // Создаем тестовые узлы
+    testStructure.forEach(nodeData => {
+        createTestNode('root', nodeData);
+    });
+    
+    // Сохраняем данные и обновляем линии
+    localStorage.setItem('treeData', JSON.stringify(data));
+    
+    requestAnimationFrame(() => {
+        setTimeout(updateAllLines, 50);
+    });
 }
