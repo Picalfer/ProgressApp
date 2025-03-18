@@ -53,15 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Восстановление узлов из сохраненных данных
 function restoreNodes() {
+    // Сначала обрабатываем прямых потомков корня
     Object.entries(data.nodes).forEach(([id, node]) => {
-        if (id !== 'root') {
-            const parentId = findParentId(id);
-            if (parentId) {
-                const parentNode = document.getElementById(parentId);
-                const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
-                const newNode = createNode(id, node.title);
-                nextLevel.appendChild(newNode);
-            }
+        if (node.parentId === 'root') {
+            const nextLevel = getOrCreateLevel(1);
+            const newNode = createNode(id, node.title);
+            nextLevel.appendChild(newNode);
+        }
+    });
+    
+    // Затем восстанавливаем все остальные узлы
+    Object.entries(data.nodes).forEach(([id, node]) => {
+        if (id !== 'root' && node.parentId !== 'root') {
+            createNode(id, node.title);
         }
     });
     
@@ -199,14 +203,14 @@ function createNode(id, title) {
             // Создаем контейнер для дочерних узлов
             childrenContainer = document.createElement('div');
             childrenContainer.className = 'children-container';
-            childrenContainer.style.display = 'flex'; // Используем flexbox для расположения дочерних узлов
-            childrenContainer.style.justifyContent = 'center'; // Центрируем контейнер
-            childrenContainer.style.flexDirection = 'row'; // Располагаем дочерние узлы в ряд
             parentNode.appendChild(childrenContainer);
         }
         
         // Добавляем дочерний узел в контейнер
         childrenContainer.appendChild(node);
+        
+        // Не добавляем узел в general level, если он уже добавлен в children-container
+        return node;
     }
     
     updateTaskCount(id); // Инициализируем количество задач
@@ -254,9 +258,14 @@ function addNode(parentId, nodeName) {
     };
     
     const parentNode = document.getElementById(parentId);
-    const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
     const newNode = createNode(newId, nodeName);
-    nextLevel.appendChild(newNode);
+    
+    // Если родитель не корневой, то узел будет добавлен в его children-container в createNode
+    if (parentId === 'root') {
+        // Для корневого узла добавляем в общий уровень
+        const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
+        nextLevel.appendChild(newNode);
+    }
     
     localStorage.setItem('treeData', JSON.stringify(data));
     closeModal('nodeModal');
@@ -633,20 +642,15 @@ function updateAllLines() {
     // Очищаем старые линии
     document.querySelectorAll('.connection-line').forEach(line => line.remove());
     
-    // Находим корневой узел и его прямых потомков
-    const rootNode = document.querySelector('.root-node');
-    const firstLevelNodes = document.querySelectorAll('[data-level="1"] .node');
-    firstLevelNodes.forEach(node => {
-        createConnectionLines(rootNode, node);
-    });
-    
-    // Находим все остальные узлы, кроме корневого
-    const otherNodes = document.querySelectorAll('.node:not(.root-node)');
-    otherNodes.forEach(node => {
-        const parentId = findParentId(node.id);
-        const parentNode = document.getElementById(parentId);
-        if (parentNode) {
-            createConnectionLines(parentNode, node);
+    // Проходим по всем узлам и создаем линии соединения с их родителями
+    Object.entries(data.nodes).forEach(([id, node]) => {
+        if (id !== 'root' && node.parentId) {
+            const parentNode = document.getElementById(node.parentId);
+            const childNode = document.getElementById(id);
+            
+            if (parentNode && childNode) {
+                createConnectionLines(parentNode, childNode);
+            }
         }
     });
 }
@@ -657,37 +661,6 @@ window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(updateAllLines, 100);
 });
-
-// Обновляем стили для линий в CSS
-const style = document.createElement('style');
-style.textContent = `
-    .connection-line {
-        position: absolute;
-        background-color: #8b4513;
-        pointer-events: none;
-        transform-origin: 0 0;
-    }
-`;
-document.head.appendChild(style);
-
-// Добавляем стили для редактируемого текста
-const editStyle = document.createElement('style');
-editStyle.textContent = `
-    .node h3.editing {
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 2px 4px;
-        outline: none;
-        min-width: 50px;
-    }
-    
-    .node h3 {
-        cursor: text;
-        padding: 2px 4px;
-    }
-`;
-document.head.appendChild(editStyle);
 
 // Добавляем функции экспорта/импорта
 function exportStructure() {
@@ -923,7 +896,7 @@ function clearAllData() {
     localStorage.setItem('treeData', JSON.stringify(data));
 }
 
-// Функция для генерации тестовых узлов
+// Обновляем функцию для генерации тестовых узлов
 function generateTestNodes() {
     // Создаем тестовые узлы
     const testStructure = [
@@ -986,10 +959,13 @@ function generateTestNodes() {
         }
         
         // Добавляем узел в DOM
-        const parentNode = document.getElementById(parentId);
-        const level = getOrCreateLevel(getNodeLevel(parentId) + 1);
         const newNode = createNode(newId, nodeData.title);
-        level.appendChild(newNode);
+        
+        // Если родитель корневой, добавляем в уровень
+        if (parentId === 'root') {
+            const level = getOrCreateLevel(1);
+            level.appendChild(newNode);
+        }
         
         // Рекурсивно создаем дочерние узлы
         if (nodeData.children && nodeData.children.length > 0) {
