@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedData) {
         Object.assign(data, JSON.parse(savedData));
         restoreNodes();
-        
+
         // Добавляем небольшую задержку для уверенности, что все узлы отрисованы
         setTimeout(() => {
             Object.entries(data.nodes).forEach(([id, node]) => {
@@ -61,14 +61,14 @@ function restoreNodes() {
             nextLevel.appendChild(newNode);
         }
     });
-    
+
     // Затем восстанавливаем все остальные узлы
     Object.entries(data.nodes).forEach(([id, node]) => {
         if (id !== 'root' && node.parentId !== 'root') {
             createNode(id, node.title);
         }
     });
-    
+
     // Используем тот же подход для обновления линий
     requestAnimationFrame(() => {
         setTimeout(updateAllLines, 50);
@@ -85,42 +85,45 @@ function createNode(id, title) {
     const node = document.createElement('div');
     node.className = 'node';
     node.id = id;
-    
+
     // Добавляем имя родительского узла
     const parentId = findParentId(id);
     if (parentId) {
         const parentTitle = data.nodes[parentId].title;
         node.dataset.parentTitle = parentTitle;
+        if (parentId !== 'root') {
+            node.classList.add('children-node')
+        }
     }
-    
+
     const content = document.createElement('div');
     content.className = 'node-content';
-    
+
     const titleEl = document.createElement('h3');
     titleEl.textContent = title;
     titleEl.dataset.originalText = title; // Сохраняем оригинальный текст
-    
+
     // Заменяем обработчик двойного клика на одинарный клик
     titleEl.addEventListener('click', (event) => {
         event.stopPropagation(); // Предотвращаем всплытие события
-        
+
         // Проверяем, не редактируется ли уже заголовок
         if (titleEl.getAttribute('contenteditable') === 'true') {
             return;
         }
-        
+
         // Делаем текст редактируемым
         titleEl.setAttribute('contenteditable', 'true');
         titleEl.classList.add('editing');
         titleEl.focus();
-        
+
         // Устанавливаем выделение на всем тексте
         const range = document.createRange();
         range.selectNodeContents(titleEl);
         const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
-        
+
         // Обработчик клавиши Enter
         const handleKeyDown = (e) => {
             if (e.key === 'Enter') {
@@ -132,12 +135,12 @@ function createNode(id, title) {
                 titleEl.blur(); // Завершаем редактирование
             }
         };
-        
+
         // Обработчик потери фокуса
         const handleBlur = () => {
             titleEl.removeAttribute('contenteditable');
             titleEl.classList.remove('editing');
-            
+
             // Проверяем, изменился ли текст
             const newText = titleEl.textContent.trim();
             if (newText && newText !== titleEl.dataset.originalText) {
@@ -146,35 +149,35 @@ function createNode(id, title) {
             } else {
                 titleEl.textContent = titleEl.dataset.originalText; // Восстанавливаем текст, если он пустой
             }
-            
+
             // Удаляем обработчики
             titleEl.removeEventListener('keydown', handleKeyDown);
             titleEl.removeEventListener('blur', handleBlur);
         };
-        
+
         // Добавляем обработчики
         titleEl.addEventListener('keydown', handleKeyDown);
         titleEl.addEventListener('blur', handleBlur);
     });
-    
+
     // Элемент для отображения количества задач
     const taskCountEl = document.createElement('span');
     taskCountEl.className = 'task-count';
     taskCountEl.textContent = `Задач: ${data.nodes[id].tasks.length}`; // Изначально количество задач
-    
+
     const buttons = document.createElement('div');
     buttons.className = 'buttons';
-    
+
     const addBtn = document.createElement('button');
     addBtn.className = 'add-btn';
     addBtn.textContent = '+';
     addBtn.onclick = () => showAddNodeModal(id);
-    
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = '×';
     deleteBtn.onclick = () => confirmDeleteNode(id);
-    
+
     // Обновляем обработчик кнопки задач 
     const taskBtn = document.createElement('button');
     taskBtn.className = 'task-btn';
@@ -183,20 +186,21 @@ function createNode(id, title) {
         event.stopPropagation();
         showTasksModal(id);
     };
-    
+
     // Добавляем кнопки в контейнер
+    buttons.appendChild(taskCountEl)
     buttons.appendChild(addBtn);
     buttons.appendChild(deleteBtn);
     buttons.appendChild(taskBtn);
+
     content.appendChild(titleEl);
-    content.appendChild(taskCountEl); // Добавляем элемент для отображения количества задач
     content.appendChild(buttons);
     node.appendChild(content);
-    
+
     // Если у узла есть родитель, добавляем его в родительский узел
     if (parentId) {
         const parentNode = document.getElementById(parentId);
-        
+
         // Проверяем, есть ли контейнер для дочерних узлов
         let childrenContainer = parentNode.querySelector('.children-container');
         if (!childrenContainer) {
@@ -205,16 +209,16 @@ function createNode(id, title) {
             childrenContainer.className = 'children-container';
             parentNode.appendChild(childrenContainer);
         }
-        
+
         // Добавляем дочерний узел в контейнер
         childrenContainer.appendChild(node);
-        
+
         // Не добавляем узел в general level, если он уже добавлен в children-container
         return node;
     }
-    
+
     updateTaskCount(id); // Инициализируем количество задач
-    
+
     return node;
 }
 
@@ -256,17 +260,17 @@ function addNode(parentId, nodeName) {
         tasks: [],
         parentId: parentId
     };
-    
+
     const parentNode = document.getElementById(parentId);
     const newNode = createNode(newId, nodeName);
-    
+
     // Если родитель не корневой, то узел будет добавлен в его children-container в createNode
     if (parentId === 'root') {
         // Для корневого узла добавляем в общий уровень
         const nextLevel = getOrCreateLevel(getNodeLevel(parentId) + 1);
         nextLevel.appendChild(newNode);
     }
-    
+
     localStorage.setItem('treeData', JSON.stringify(data));
     closeModal('nodeModal');
 
@@ -279,32 +283,31 @@ function addNode(parentId, nodeName) {
 function showTasksModal(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return;
-    
+
     const tasks = node.tasks || [];
-    
+    const sortedTasks = [...tasks].sort((a, b) => a.completed - b.completed);
+
     let tasksHtml = '';
-    if (tasks.length > 0) {
+    if (sortedTasks.length > 0) {
         tasksHtml = '<div class="tasks-list">';
-        tasks.forEach((task) => {
+        sortedTasks.forEach((task) => {
             tasksHtml += `
-                <div class="task-item">
-                    <div class="task-content">
-                        <label class="task-checkbox">
-                            <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} 
-                                   onchange="toggleTask('${nodeId}', ${task.id})">
-                            <span class="checkmark"></span>
-                        </label>
-                        <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
-                    </div>
-                    <button class="delete-task-btn" onclick="deleteTask('${nodeId}', ${task.id})">✕</button>
-                </div>
-            `;
+                        <div class="task-item">
+                            <label class="task-checkbox">
+                                <input type="checkbox" id="task_${task.id}" ${task.completed ? 'checked' : ''} 
+                                       onchange="toggleTask('${nodeId}', ${task.id})">
+                                <span class="checkmark"></span>
+                            </label>
+                            <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
+                            <button class="delete-task-btn" onclick="deleteTask('${nodeId}', ${task.id})">✕</button>
+                        </div>
+                        `;
         });
         tasksHtml += '</div>';
     } else {
         tasksHtml = '<p class="no-tasks">Нет задач</p>';
     }
-    
+
     showModal({
         id: 'tasksModal',
         title: `Задачи: ${node.title}`,
@@ -363,7 +366,7 @@ function confirmClearAll() {
 // Функция для показа модального окна редактирования узла
 function showEditNodeModal(nodeId) {
     const node = getNodeById(nodeId); // Предполагаем, что эта функция уже существует
-    
+
     showModal({
         id: 'editModal',
         title: 'Редактировать узел',
@@ -421,46 +424,46 @@ function confirmDeleteNode(nodeId) {
 function showModal(options) {
     // Параметры по умолчанию
     const defaults = {
-        title: 'Модальное окно', 
-        content: '', 
+        title: 'Модальное окно',
+        content: '',
         fields: [],
         buttons: [
-            { text: 'Закрыть', action: 'close', class: '' }
+            {text: 'Закрыть', action: 'close', class: ''}
         ],
         onOpen: null,
         id: 'dynamicModal_' + Date.now()
     };
-    
+
     // Объединение параметров по умолчанию с переданными параметрами
     const settings = {...defaults, ...options};
-    
+
     // Удаляем предыдущее модальное окно с таким же ID, если оно существует
     const existingModal = document.getElementById(settings.id);
     if (existingModal) {
         existingModal.remove();
     }
-    
+
     // Создаем модальное окно
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.id = settings.id;
-    
+
     // Создаем содержимое модального окна
     const modalContent = document.createElement('div');
     modalContent.className = 'modal-content';
-    
+
     // Добавляем заголовок
     const title = document.createElement('h2');
     title.textContent = settings.title;
     modalContent.appendChild(title);
-    
+
     // Добавляем основное содержимое, если оно есть
     if (settings.content) {
         const contentElement = document.createElement('p');
         contentElement.innerHTML = settings.content;
         modalContent.appendChild(contentElement);
     }
-    
+
     // Добавляем поля ввода, если они указаны
     const inputFields = {};
     if (settings.fields && settings.fields.length > 0) {
@@ -471,14 +474,14 @@ function showModal(options) {
                 input.placeholder = field.placeholder || '';
                 input.value = field.value || '';
                 input.id = field.id;
-                
+
                 if (field.label) {
                     const label = document.createElement('label');
                     label.textContent = field.label;
                     label.setAttribute('for', field.id);
                     modalContent.appendChild(label);
                 }
-                
+
                 modalContent.appendChild(input);
                 inputFields[field.id] = input;
             } else if (field.type === 'textarea') {
@@ -486,14 +489,14 @@ function showModal(options) {
                 textarea.placeholder = field.placeholder || '';
                 textarea.value = field.value || '';
                 textarea.id = field.id;
-                
+
                 if (field.label) {
                     const label = document.createElement('label');
                     label.textContent = field.label;
                     label.setAttribute('for', field.id);
                     modalContent.appendChild(label);
                 }
-                
+
                 modalContent.appendChild(textarea);
                 inputFields[field.id] = textarea;
             } else if (field.type === 'custom') {
@@ -505,19 +508,19 @@ function showModal(options) {
             }
         });
     }
-    
+
     // Добавляем кнопки
     const buttonsContainer = document.createElement('div');
     buttonsContainer.className = 'modal-buttons';
-    
+
     settings.buttons.forEach(button => {
         const btn = document.createElement('button');
         btn.textContent = button.text;
-        
+
         if (button.class) {
             btn.className = button.class;
         }
-        
+
         if (button.action === 'close') {
             btn.onclick = () => closeModal(settings.id);
         } else if (typeof button.action === 'function') {
@@ -525,26 +528,43 @@ function showModal(options) {
                 button.action(inputFields, settings.id);
             };
         }
-        
+
         buttonsContainer.appendChild(btn);
     });
-    
+
     modalContent.appendChild(buttonsContainer);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
-    
+
     // Показываем модальное окно
     modal.style.display = 'flex';
-    
+
+    // Закрытие при клике вне модального окна
+    const handleOutsideClick = (e) => {
+        if (!modalContent.contains(e.target) && e.target !== modalContent) {
+            closeModal(settings.id);
+            document.removeEventListener('click', handleOutsideClick);
+        }
+    };
+
+    // Добавляем обработчик с небольшой задержкой, чтобы не срабатывал сразу при открытии
+    setTimeout(() => {
+        document.addEventListener('click', handleOutsideClick);
+    }, 0);
+
     // Вызываем callback после открытия, если он указан
     if (typeof settings.onOpen === 'function') {
         settings.onOpen(inputFields, settings.id);
     }
-    
+
+    // Возвращаем объект с методами (добавляем removeListener для очистки)
     return {
         modal: modal,
         fields: inputFields,
-        close: () => closeModal(settings.id)
+        close: () => {
+            document.removeEventListener('click', handleOutsideClick);
+            closeModal(settings.id);
+        }
     };
 }
 
@@ -565,12 +585,12 @@ function addTask(nodeId, taskText) {
         text: taskText,
         completed: false
     };
-    
-    data.nodes[nodeId].tasks.push(task);
-    
+
+    data.nodes[nodeId].tasks.unshift(task);
+
     // Обновляем количество задач
     updateTaskCount(nodeId);
-    
+
     localStorage.setItem('treeData', JSON.stringify(data));
     showTasksModal(nodeId);
 }
@@ -617,7 +637,7 @@ function createConnectionLines(parentNode, childNode) {
 
     // Вычисляем длину линии с помощью теоремы Пифагора
     const length = Math.sqrt(
-        Math.pow(childTop.x - parentBottom.x, 2) + 
+        Math.pow(childTop.x - parentBottom.x, 2) +
         Math.pow(childTop.y - parentBottom.y, 2)
     );
 
@@ -641,13 +661,13 @@ function createConnectionLines(parentNode, childNode) {
 function updateAllLines() {
     // Очищаем старые линии
     document.querySelectorAll('.connection-line').forEach(line => line.remove());
-    
+
     // Проходим по всем узлам и создаем линии соединения с их родителями
     Object.entries(data.nodes).forEach(([id, node]) => {
         if (id !== 'root' && node.parentId) {
             const parentNode = document.getElementById(node.parentId);
             const childNode = document.getElementById(id);
-            
+
             if (parentNode && childNode) {
                 createConnectionLines(parentNode, childNode);
             }
@@ -665,9 +685,9 @@ window.addEventListener('resize', () => {
 // Добавляем функции экспорта/импорта
 function exportStructure() {
     const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
+    const blob = new Blob([dataStr], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'kodama-structure.json';
@@ -681,19 +701,19 @@ function importStructure(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             try {
                 const importedData = JSON.parse(e.target.result);
-                
+
                 // Очищаем существующие данные и узлы
-                data.nodes = { 
+                data.nodes = {
                     'root': {
                         title: 'Kodama',
                         tasks: [],
                         parentId: null
                     }
                 };
-                
+
                 // Очищаем DOM
                 document.querySelectorAll('.level').forEach(level => {
                     if (level.dataset.level !== '1') {
@@ -723,7 +743,7 @@ function importStructure(event) {
                 // Строим дерево уровень за уровнем
                 function buildLevel(parentId, level) {
                     const levelEl = getOrCreateLevel(level);
-                    
+
                     // Находим все узлы текущего уровня
                     Object.entries(data.nodes).forEach(([id, node]) => {
                         if (node.parentId === parentId) {
@@ -735,10 +755,10 @@ function importStructure(event) {
 
                 // Начинаем с корневого уровня
                 buildLevel('root', 1);
-                
+
                 // Сохраняем в localStorage
                 localStorage.setItem('treeData', JSON.stringify(data));
-                
+
                 // Обновляем линии
                 requestAnimationFrame(() => {
                     setTimeout(updateAllLines, 50);
@@ -756,7 +776,7 @@ function importStructure(event) {
 // Обновляем функцию редактирования узла
 function editNode(nodeId, newTitle) {
     data.nodes[nodeId].title = newTitle;
-    
+
     // Обновляем отображение имени родителя у дочерних узлов
     Object.entries(data.nodes).forEach(([id, node]) => {
         if (node.parentId === nodeId) {
@@ -766,7 +786,7 @@ function editNode(nodeId, newTitle) {
             }
         }
     });
-    
+
     localStorage.setItem('treeData', JSON.stringify(data));
 }
 
@@ -782,13 +802,13 @@ function deleteNode(nodeId) {
             }
         });
     }
-    
+
     // Удаляем узел и его детей
     deleteChildren(nodeId);
     delete data.nodes[nodeId];
     const nodeEl = document.getElementById(nodeId);
     if (nodeEl) nodeEl.remove();
-    
+
     // Обновляем линии и сохраняем данные
     updateAllLines();
     localStorage.setItem('treeData', JSON.stringify(data));
@@ -799,15 +819,15 @@ function deleteNode(nodeId) {
 function toggleTask(nodeId, taskId) {
     const node = getNodeById(nodeId);
     if (!node) return;
-    
+
     const task = node.tasks.find(t => t.id === Number(taskId));
     if (task) {
         task.completed = !task.completed;
-        
+
         // Обновляем визуальное отображение
         const taskText = document.querySelector(`#tasksModal .task-item input[id="task_${taskId}"]`)
             .closest('.task-item').querySelector('.task-text');
-        
+
         if (taskText) {
             if (task.completed) {
                 taskText.classList.add('completed');
@@ -815,7 +835,7 @@ function toggleTask(nodeId, taskId) {
                 taskText.classList.remove('completed');
             }
         }
-        
+
         updateTaskCount(nodeId);
         localStorage.setItem('treeData', JSON.stringify(data));
     }
@@ -825,12 +845,12 @@ function toggleTask(nodeId, taskId) {
 function deleteTask(nodeId, taskId) {
     const node = getNodeById(nodeId);
     if (!node) return;
-    
+
     node.tasks = node.tasks.filter(t => t.id !== taskId);
-    
+
     // Обновляем количество задач
     updateTaskCount(nodeId);
-    
+
     localStorage.setItem('treeData', JSON.stringify(data));
     showTasksModal(nodeId);
 }
@@ -838,13 +858,13 @@ function deleteTask(nodeId, taskId) {
 function updateTaskCount(nodeId) {
     const taskCountEl = document.querySelector(`#${nodeId} .task-count`);
     const tasks = data.nodes[nodeId].tasks;
-    
+
     // Считаем количество невыполненных задач
     const incompleteTasksCount = tasks.filter(task => !task.completed).length;
-    
+
     // Обновляем текст элемента
     taskCountEl.textContent = `Задач: ${incompleteTasksCount}`;
-    
+
     // Показываем или скрываем элемент в зависимости от количества задач
     if (incompleteTasksCount > 0) {
         taskCountEl.style.display = 'inline'; // Показываем элемент
@@ -870,28 +890,28 @@ function clearAllData() {
     };
     data.nextId = 1;
     data.taskId = 1;
-    
+
     // Очищаем DOM от всех узлов, кроме корневого
     document.querySelectorAll('.node:not(#root)').forEach(node => node.remove());
-    
+
     // Очищаем все уровни, кроме первого
     document.querySelectorAll('.level:not([data-level="1"])').forEach(level => level.remove());
-    
+
     // Очищаем первый уровень
     const firstLevel = document.querySelector('.level[data-level="1"]');
     if (firstLevel) {
         firstLevel.innerHTML = '';
     }
-    
+
     // Удаляем все линии соединений
     document.querySelectorAll('.connection-line').forEach(line => line.remove());
-    
+
     // Обновляем заголовок корневого узла (на всякий случай)
     const rootTitle = document.querySelector('#root h2');
     if (rootTitle) {
         rootTitle.textContent = 'Kodama';
     }
-    
+
     // Сохраняем пустую структуру в localStorage
     localStorage.setItem('treeData', JSON.stringify(data));
 }
@@ -900,11 +920,11 @@ function clearAllData() {
 function generateTestNodes() {
     // Создаем тестовые узлы
     const testStructure = [
-        { 
-            title: "Образование", 
+        {
+            title: "Образование",
             tasks: ["Разработать новые курсы", "Нанять преподавателей", "Обновить учебные материалы"],
             children: [
-                { 
+                {
                     title: "Онлайн-курсы",
                     tasks: ["Записать видеоуроки", "Создать тесты"],
                     children: []
@@ -933,10 +953,10 @@ function generateTestNodes() {
             children: []
         }
     ];
-    
+
     // Очищаем перед созданием, чтобы избежать дублирования
     clearAllData();
-    
+
     // Рекурсивная функция для создания узлов и задач
     function createTestNode(parentId, nodeData) {
         const newId = `node${data.nextId++}`;
@@ -945,7 +965,7 @@ function generateTestNodes() {
             tasks: [],
             parentId: parentId
         };
-        
+
         // Добавляем задачи к узлу
         if (nodeData.tasks && nodeData.tasks.length > 0) {
             nodeData.tasks.forEach(taskText => {
@@ -957,34 +977,34 @@ function generateTestNodes() {
                 data.nodes[newId].tasks.push(task);
             });
         }
-        
+
         // Добавляем узел в DOM
         const newNode = createNode(newId, nodeData.title);
-        
+
         // Если родитель корневой, добавляем в уровень
         if (parentId === 'root') {
             const level = getOrCreateLevel(1);
             level.appendChild(newNode);
         }
-        
+
         // Рекурсивно создаем дочерние узлы
         if (nodeData.children && nodeData.children.length > 0) {
             nodeData.children.forEach(childData => {
                 createTestNode(newId, childData);
             });
         }
-        
+
         return newId;
     }
-    
+
     // Создаем тестовые узлы
     testStructure.forEach(nodeData => {
         createTestNode('root', nodeData);
     });
-    
+
     // Сохраняем данные и обновляем линии
     localStorage.setItem('treeData', JSON.stringify(data));
-    
+
     requestAnimationFrame(() => {
         setTimeout(updateAllLines, 50);
     });

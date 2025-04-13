@@ -42,14 +42,20 @@ header {
     background: #fff9e6;
     border: 2px solid #8b4513;
     padding: 1rem;
-    min-width: 250px;
     position: relative;
     z-index: 1;
     margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.children-node {
+    width: 100%;
 }
 
 .node-content {
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -101,8 +107,8 @@ header {
     background: #fff9e6;
     border: 2px solid #8b4513;
     padding: 2rem;
-    width: 90%;
-    max-width: 500px;
+    width: 70%;
+    height: 80vh;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -119,6 +125,11 @@ header {
     font-family: 'Courier New', Courier, monospace;
 }
 
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
 .modal-buttons button {
     padding: 0.5rem 1rem;
     border: 2px solid #8b4513;
@@ -126,13 +137,14 @@ header {
     color: #2c1810;
     cursor: pointer;
     font-family: 'Courier New', Courier, monospace;
-    margin-left: 1rem;
 }
 
 .tasks-list {
+    display: flex;
+    flex-direction: column;
     margin: 1rem 0;
     border: 2px solid #8b4513;
-    max-height: 200px;
+    height: 50vh;
     overflow-y: auto;
 }
 
@@ -141,19 +153,13 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem;
+    gap: 1rem;
     border-bottom: 2px solid #8b4513;
-    background: #f4f1e9;
+    background: #fbf2d8;
 }
 
 .task-item:last-child {
     border-bottom: none;
-}
-
-.task-content {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-grow: 1;
 }
 
 .task-checkbox {
@@ -190,6 +196,7 @@ header {
 
 .task-text {
     flex-grow: 1;
+    text-align: left;
 }
 
 .task-text.completed {
@@ -215,7 +222,7 @@ header {
 
 .connection-line {
     position: absolute;
-    background-color: #8b4513;
+    background-color: rgba(139, 69, 19, 0.38);
     pointer-events: none;
     transform-origin: 0 0;
     opacity: 0;
@@ -329,7 +336,7 @@ header {
 .children-container {
     display: flex;
     flex-direction: column;
-    align-items: center;    
+    align-items: start;
     width: 100%;
     margin-top: 2rem;
 }
@@ -341,7 +348,9 @@ header {
 }
 
 .task-count {
-    font-size: 0.9rem; /* Размер шрифта для количества задач */
-    color: #8b4513; /* Цвет текста */
-    margin-left: 1rem; /* Отступ слева */
+    font-size: 0.9rem;
+    color: #8b4513;
+    display: flex;
+    margin: 0 0.5rem;
+    align-items: center;
 }
