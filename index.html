@@ -8,31 +8,33 @@
     <link rel="icon" href="favicon.png" type="image/png">
 </head>
 <body>
-    <header>
-        <h1>План развития школы Kodama</h1>
-        <div class="header-buttons">
-            <button onclick="exportStructure()">Экспорт</button>
-            <input type="file" id="importFile" style="display: none" onchange="importStructure(event)">
-            <button onclick="document.getElementById('importFile').click()">Импорт</button>
-            <button onclick="confirmClearAll()" class="clear-btn">Очистить всё</button>
-            <button onclick="generateTestNodes()" class="test-btn">Тест</button>
-        </div>
-    </header>
+<header>
+    <h1>План развития школы Kodama</h1>
+    <div class="header-buttons">
+        <button onclick="exportStructure()">Экспорт</button>
+        <input type="file" id="importFile" style="display: none" onchange="importStructure(event)">
+        <!--
+        <button onclick="document.getElementById('importFile').click()">Импорт</button>
+        <button onclick="confirmClearAll()" class="clear-btn">Очистить всё</button>
+        <button onclick="generateTestNodes()" class="test-btn">Тест</button>
+        -->
+    </div>
+</header>
 
-    <main>
-        <div class="tree-container">
-            <div class="node root-node" id="root">
-                <div class="node-content">
-                    <h2>Kodama</h2>
-                    <button class="add-btn" onclick="showAddNodeModal('root')">+</button>
-                </div>
-            </div>
-            <div class="level" data-level="1">
-                <!-- Узлы будут добавляться сюда -->
+<main>
+    <div class="tree-container">
+        <div class="node root-node" id="root">
+            <div class="node-content">
+                <h2>Kodama</h2>
+                <button class="add-btn" onclick="showAddNodeModal('root')">+</button>
             </div>
         </div>
-    </main>
+        <div class="level" data-level="1">
+            <!-- Узлы будут добавляться сюда -->
+        </div>
+    </div>
+</main>
 
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

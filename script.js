@@ -3,7 +3,7 @@ const data = {
     nodes: {
         'root': {
             title: 'Kodama',
-            tasks: [], // теперь каждая задача будет объектом { id: number, text: string, completed: boolean }
+            tasks: [], // каждая задача объект { id: number, text: string, completed: boolean }
             parentId: null
         },
         'node1': {
